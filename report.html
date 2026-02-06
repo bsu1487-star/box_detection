@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Box Logo Detection Report</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: #f5f5f5; color: #222; line-height: 1.7; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 30px 40px; background: #fff; }
+  h1 { font-size: 1.8em; border-bottom: 3px solid #333; padding-bottom: 10px; margin-bottom: 8px; }
+  h2 { font-size: 1.3em; margin-top: 36px; margin-bottom: 12px; padding-left: 10px; border-left: 4px solid #0066cc; }
+  h3 { font-size: 1.1em; margin-top: 24px; margin-bottom: 8px; color: #333; }
+  p, li { font-size: 0.95em; }
+  .meta { color: #666; font-size: 0.85em; margin-bottom: 24px; }
+
+  /* 결론 박스 */
+  .conclusion { background: #e8f4fd; border: 1px solid #b3d9f2; border-radius: 6px; padding: 18px 22px; margin: 20px 0; }
+  .conclusion h3 { margin-top: 0; color: #0055a5; border: none; padding: 0; }
+  .conclusion ul { margin-left: 20px; }
+  .conclusion li { margin-bottom: 4px; }
+
+  /* 경고 박스 */
+  .warning { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 14px 18px; margin: 16px 0; }
+
+  /* 테이블 */
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 0.88em; }
+  th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: center; }
+  th { background: #f0f0f0; font-weight: 600; }
+  .found { background: #c8e6c9; font-weight: 700; color: #2e7d32; }
+  .not-found { background: #ffcdd2; color: #c62828; }
+  .correct { background: #e8f5e9; }
+  .wrong { background: #fce4ec; }
+  td.name { text-align: left; font-weight: 500; }
+  td.size { font-family: 'Consolas', monospace; font-size: 0.85em; color: #555; }
+  td.score { font-family: 'Consolas', monospace; }
+
+  /* 이미지 */
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .img-box { border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+  .img-box img { width: 100%; display: block; }
+  .img-box .caption { text-align: center; padding: 8px; font-size: 0.85em; font-weight: 600; background: #fafafa; }
+  .img-single { max-width: 700px; margin: 12px auto; }
+  .img-single img { width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+
+  /* 방법 비교 카드 */
+  .method-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+  .card { border: 1px solid #ddd; border-radius: 6px; padding: 14px; }
+  .card h4 { margin-bottom: 6px; }
+  .card.good { border-color: #4caf50; background: #f1f8e9; }
+  .card.bad { border-color: #f44336; background: #fce4ec; }
+  .card.ok { border-color: #ff9800; background: #fff8e1; }
+
+  ul { margin-left: 20px; margin-bottom: 8px; }
+  code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.78em; font-weight: 600; }
+  .tag-green { background: #c8e6c9; color: #2e7d32; }
+  .tag-red { background: #ffcdd2; color: #c62828; }
+  .tag-gray { background: #e0e0e0; color: #555; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Box Logo Detection Report</h1>
+<p class="meta">Date: 2026-02-06 &nbsp;|&nbsp; Scene: box_raw.png (2816x1536) &nbsp;|&nbsp; Templates: 11 &nbsp;|&nbsp; Methods: SIFT, ORB, Template Matching, Canny Edge TM</p>
+
+<!-- ============================================================ -->
+<h2>1. 결론 (Executive Summary)</h2>
+
+<div class="conclusion">
+  <h3>Feature Matching(SIFT/ORB)은 유사 로고를 구분할 수 없고, Template Matching 계열(TM/Canny)이 정확하다.</h3>
+  <ul>
+    <li><b>SIFT / ORB</b> : 11개 템플릿 <b>전부 FOUND</b> 판정 &mdash; 부분 특징점 공유로 인해 오답과 정답을 구분 불가</li>
+    <li><b>TM (Template Matching)</b> : 정답 4개만 FOUND, 오답 7개 모두 NOT FOUND &mdash; <span class="tag tag-green">가장 정확</span></li>
+    <li><b>Canny Edge TM</b> : 정답 4개만 FOUND, 오답 7개 모두 NOT FOUND &mdash; 오답 점수 격차가 가장 커서 <span class="tag tag-green">가장 견고</span></li>
+    <li><b>색상 변화 테스트:</b> hdmi4_color1(주황 톤 변경)도 TM(0.86)/Canny(0.42) 모두 FOUND &mdash; <span class="tag tag-green">색상 변화에도 검출 성공</span></li>
+    <li><b>단, TM/Canny 모두 템플릿 크기가 실제 검출 대상과 비슷해야 동작</b> (1536x1024 원본은 스케일 범위 초과로 실패)</li>
+  </ul>
+</div>
+
+<div class="warning">
+  <b>주의:</b> 고해상도 템플릿(1536x1024)을 단순 리사이즈하면 배경 비율(~80%)이 유지되어 Canny에서 오검출이 발생한다.
+  고해상도 소스는 <b>로고 영역만 크롭</b>하여 사용해야 한다.
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 테스트 대상</h2>
+
+<h3>2-1. Scene (검출 대상 이미지)</h3>
+<div class="img-single">
+  <img src="box_raw.png" alt="box_raw.png">
+</div>
+<p>Samsung QLED 4K TV 박스 전개도. 전면 하단에 <b>Dolby Atmos</b> 로고와 <b>4 HDMI</b> 로고가 존재한다.</p>
+
+<h3>2-2. Templates (검출 템플릿 11개)</h3>
+<table>
+  <tr>
+    <th>#</th><th>Name</th><th>File</th><th>Size</th><th>내용</th><th>정답</th>
+  </tr>
+  <tr class="correct"><td>1</td><td class="name">dolbyAlmos</td><td>dolbyAlmos.png</td><td class="size">138x40</td><td>Dolby Atmos (저해상도)</td><td><span class="tag tag-green">O</span></td></tr>
+  <tr class="correct"><td>2</td><td class="name">DolbyAlmos_high</td><td>DolbyAlmos_high.png</td><td class="size">1536x1024</td><td>Dolby Atmos (고해상도)</td><td><span class="tag tag-green">O</span> <span class="tag tag-gray">too big</span></td></tr>
+  <tr class="wrong"><td>3</td><td class="name">DolbyAtmos</td><td>DolbyAtmos.png</td><td class="size">1536x1024</td><td>Dolby Atmos (다른 촬영본)</td><td><span class="tag tag-green">O</span> <span class="tag tag-gray">too big</span></td></tr>
+  <tr class="wrong"><td>4</td><td class="name">DolbyCinema</td><td>DolbyCinema.png</td><td class="size">1536x1024</td><td>Dolby Cinema (다른 제품)</td><td><span class="tag tag-red">X</span></td></tr>
+  <tr class="wrong"><td>5</td><td class="name">hdmi2</td><td>hdmi2.png</td><td class="size">1536x1024</td><td>2 HDMI</td><td><span class="tag tag-red">X</span></td></tr>
+  <tr class="wrong"><td>6</td><td class="name">hdmi3</td><td>hdmi3.png</td><td class="size">1536x1024</td><td>3 HDMI</td><td><span class="tag tag-red">X</span></td></tr>
+  <tr class="correct"><td>7</td><td class="name">hdmi4</td><td>hdmi4.png</td><td class="size">164x61</td><td>4 HDMI (저해상도)</td><td><span class="tag tag-green">O</span></td></tr>
+  <tr class="correct"><td>8</td><td class="name">hdmi4_high</td><td>hdmi4_high.png</td><td class="size">1536x1024</td><td>4 HDMI (고해상도)</td><td><span class="tag tag-green">O</span> <span class="tag tag-gray">too big</span></td></tr>
+  <tr class="correct"><td>9</td><td class="name">hdmi4_color1</td><td>hdmi4_color1.png</td><td class="size">164x61</td><td>4 HDMI (주황 색상 변경)</td><td><span class="tag tag-green">O</span></td></tr>
+  <tr class="correct"><td>10</td><td class="name">hdmi4_high1</td><td>hdmi4_high1.png</td><td class="size">200x60</td><td>4 HDMI (고해상도 리사이즈)</td><td><span class="tag tag-green">O</span></td></tr>
+  <tr class="wrong"><td>11</td><td class="name">hdmi3_high</td><td>hdmi3_high.png</td><td class="size">200x71</td><td>3 HDMI (고해상도 리사이즈)</td><td><span class="tag tag-red">X</span></td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>3. 검출 방법 비교</h2>
+
+<div class="method-cards">
+  <div class="card bad">
+    <h4>SIFT (Scale-Invariant Feature Transform)</h4>
+    <ul>
+      <li>스케일/회전 불변 특징점 추출</li>
+      <li>Lowe's ratio test + Homography RANSAC 검증</li>
+      <li><b>결과: 10/10 FOUND</b> &mdash; 부분 특징 공유로 전부 매칭됨</li>
+    </ul>
+  </div>
+  <div class="card bad">
+    <h4>ORB (Oriented FAST and Rotated BRIEF)</h4>
+    <ul>
+      <li>바이너리 디스크립터 기반, 속도 빠름</li>
+      <li>작은 템플릿용 업스케일 + CLAHE 전처리 적용</li>
+      <li><b>결과: 10/10 FOUND</b> &mdash; SIFT와 동일한 한계</li>
+    </ul>
+  </div>
+  <div class="card good">
+    <h4>TM (Template Matching)</h4>
+    <ul>
+      <li>멀티스케일(0.3x~3.0x) 픽셀 비교</li>
+      <li>TM_CCOEFF_NORMED 정규화</li>
+      <li><b>결과: 3/10 FOUND</b> &mdash; 정답만 정확히 검출 <span class="tag tag-green">BEST</span></li>
+    </ul>
+  </div>
+  <div class="card good">
+    <h4>Canny Edge TM</h4>
+    <ul>
+      <li>Canny 엣지 변환 후 Template Matching</li>
+      <li>색상/톤 변화에 강함, 윤곽만 비교</li>
+      <li><b>결과: 3/10 FOUND</b> &mdash; 오답 점수 격차 최대 <span class="tag tag-green">ROBUST</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>4. 전체 검출 결과</h2>
+
+<table>
+  <tr>
+    <th rowspan="2">Template</th>
+    <th rowspan="2">Size</th>
+    <th rowspan="2">정답</th>
+    <th colspan="2">SIFT</th>
+    <th colspan="2">ORB</th>
+    <th colspan="2">TM</th>
+    <th colspan="2">Canny</th>
+  </tr>
+  <tr>
+    <th>Match</th><th>Result</th>
+    <th>Match</th><th>Result</th>
+    <th>Score</th><th>Result</th>
+    <th>Score</th><th>Result</th>
+  </tr>
+  <tr>
+    <td class="name">dolbyAlmos</td><td class="size">138x40</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">71</td><td class="found">FOUND</td>
+    <td class="score">96</td><td class="found">FOUND</td>
+    <td class="score">0.9288</td><td class="found">FOUND</td>
+    <td class="score">0.6882</td><td class="found">FOUND</td>
+  </tr>
+  <tr>
+    <td class="name">DolbyAlmos_high</td><td class="size">1536x1024</td><td><span class="tag tag-gray">O*</span></td>
+    <td class="score">60</td><td class="found">FOUND</td>
+    <td class="score">475</td><td class="found">FOUND</td>
+    <td class="score">0.4329</td><td class="not-found">NOT</td>
+    <td class="score">0.1081</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">DolbyAtmos</td><td class="size">1536x1024</td><td><span class="tag tag-gray">O*</span></td>
+    <td class="score">87</td><td class="found">FOUND</td>
+    <td class="score">492</td><td class="found">FOUND</td>
+    <td class="score">0.4082</td><td class="not-found">NOT</td>
+    <td class="score">0.0777</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">DolbyCinema</td><td class="size">1536x1024</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">17</td><td class="found">FOUND</td>
+    <td class="score">499</td><td class="found">FOUND</td>
+    <td class="score">0.3907</td><td class="not-found">NOT</td>
+    <td class="score">0.1165</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi2</td><td class="size">1536x1024</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">34</td><td class="found">FOUND</td>
+    <td class="score">152</td><td class="found">FOUND</td>
+    <td class="score">0.4698</td><td class="not-found">NOT</td>
+    <td class="score">0.1747</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi3</td><td class="size">1536x1024</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">24</td><td class="found">FOUND</td>
+    <td class="score">217</td><td class="found">FOUND</td>
+    <td class="score">0.5002</td><td class="not-found">NOT</td>
+    <td class="score">0.1663</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi3_high</td><td class="size">200x71</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">23</td><td class="found">FOUND</td>
+    <td class="score">61</td><td class="found">FOUND</td>
+    <td class="score">0.7231</td><td class="not-found">NOT</td>
+    <td class="score">0.3796</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi4</td><td class="size">164x61</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">105</td><td class="found">FOUND</td>
+    <td class="score">96</td><td class="found">FOUND</td>
+    <td class="score">0.9269</td><td class="found">FOUND</td>
+    <td class="score">0.5695</td><td class="found">FOUND</td>
+  </tr>
+  <tr style="background:#e8f5e9;">
+    <td class="name">hdmi4_color1</td><td class="size">164x61</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">63</td><td class="found">FOUND</td>
+    <td class="score">77</td><td class="found">FOUND</td>
+    <td class="score">0.8625</td><td class="found">FOUND</td>
+    <td class="score">0.4166</td><td class="found">FOUND</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi4_high</td><td class="size">1536x1024</td><td><span class="tag tag-gray">O*</span></td>
+    <td class="score">74</td><td class="found">FOUND</td>
+    <td class="score">613</td><td class="found">FOUND</td>
+    <td class="score">0.4618</td><td class="not-found">NOT</td>
+    <td class="score">0.1470</td><td class="not-found">NOT</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi4_high1</td><td class="size">200x60</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">48</td><td class="found">FOUND</td>
+    <td class="score">65</td><td class="found">FOUND</td>
+    <td class="score">0.8579</td><td class="found">FOUND</td>
+    <td class="score">0.4138</td><td class="found">FOUND</td>
+  </tr>
+</table>
+<p><b>O*</b> = 내용은 정답이지만 템플릿 크기(1536x1024)가 스케일 범위를 초과하여 TM/Canny에서 미검출.</p>
+
+<!-- ============================================================ -->
+<h2>5. 검출 결과 시각화</h2>
+<p>각 방법별로 FOUND된 로고에 컬러 바운딩 박스를 표시한 결과 이미지:</p>
+
+<div class="img-grid">
+  <div class="img-box">
+    <img src="result_SIFT.png" alt="SIFT result">
+    <div class="caption">SIFT &mdash; 11/11 FOUND (전부 검출, 구분 불가)</div>
+  </div>
+  <div class="img-box">
+    <img src="result_ORB.png" alt="ORB result">
+    <div class="caption">ORB &mdash; 11/11 FOUND (전부 검출, 구분 불가)</div>
+  </div>
+  <div class="img-box">
+    <img src="result_TM.png" alt="TM result">
+    <div class="caption">Template Matching &mdash; 4/11 FOUND (정답만 검출)</div>
+  </div>
+  <div class="img-box">
+    <img src="result_Canny.png" alt="Canny result">
+    <div class="caption">Canny Edge TM &mdash; 4/11 FOUND (정답만 검출)</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>6. 고해상도 리사이즈 실험</h2>
+<p>1536x1024 템플릿을 200px 폭으로 리사이즈 후 TM/Canny 점수 변화:</p>
+
+<table>
+  <tr>
+    <th>Template</th><th>내용</th><th>정답</th>
+    <th>TM (원본)</th><th>TM (200px)</th>
+    <th>Canny (원본)</th><th>Canny (200px)</th>
+  </tr>
+  <tr>
+    <td class="name">DolbyAlmos_high</td><td>Dolby Atmos</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">0.4329</td><td class="score">0.6781</td>
+    <td class="score">0.1081</td><td class="score wrong">0.5932</td>
+  </tr>
+  <tr>
+    <td class="name">DolbyAtmos</td><td>Dolby Atmos</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">0.4082</td><td class="score">0.6763</td>
+    <td class="score">0.0777</td><td class="score wrong">0.5851</td>
+  </tr>
+  <tr>
+    <td class="name">DolbyCinema</td><td>Dolby Cinema</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">0.3907</td><td class="score">0.7042</td>
+    <td class="score">0.1165</td><td class="score wrong">0.5788</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi2</td><td>2 HDMI</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">0.4698</td><td class="score">0.7087</td>
+    <td class="score">0.1747</td><td class="score wrong">0.4375</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi3</td><td>3 HDMI</td><td><span class="tag tag-red">X</span></td>
+    <td class="score">0.5002</td><td class="score">0.7399</td>
+    <td class="score">0.1663</td><td class="score wrong">0.4303</td>
+  </tr>
+  <tr>
+    <td class="name">hdmi4_high</td><td>4 HDMI</td><td><span class="tag tag-green">O</span></td>
+    <td class="score">0.4618</td><td class="score correct">0.8458</td>
+    <td class="score">0.1470</td><td class="score correct">0.4012</td>
+  </tr>
+</table>
+
+<div class="warning">
+  <b>결과:</b> 단순 리사이즈 시 TM은 hdmi4_high만 FOUND(0.85), 나머지 오답은 0.68~0.74로 아슬아슬하게 NOT.
+  <b>Canny는 전부 FOUND가 되어 오검출 발생.</b> 배경 크래프트지의 엣지 패턴이 유사해서 0.40~0.59로 threshold(0.38)를 넘김.
+  고해상도 템플릿은 반드시 <b>로고 영역만 크롭</b>하여 사용해야 한다.
+</div>
+
+<!-- ============================================================ -->
+<h2>7. 각 방법의 특성 및 한계</h2>
+
+<table>
+  <tr>
+    <th>특성</th><th>SIFT</th><th>ORB</th><th>TM</th><th>Canny TM</th>
+  </tr>
+  <tr>
+    <td class="name">유사 로고 구분</td>
+    <td class="not-found">불가</td><td class="not-found">불가</td>
+    <td class="found">가능</td><td class="found">가능</td>
+  </tr>
+  <tr>
+    <td class="name">스케일 변화 대응</td>
+    <td class="found">강함</td><td class="found">강함</td>
+    <td class="found">멀티스케일</td><td class="found">멀티스케일</td>
+  </tr>
+  <tr>
+    <td class="name">회전/왜곡 대응</td>
+    <td class="found">강함</td><td class="found">강함</td>
+    <td class="not-found">불가</td><td class="not-found">불가</td>
+  </tr>
+  <tr>
+    <td class="name">색상/톤 변화 대응</td>
+    <td>보통</td><td>보통</td>
+    <td>보통 (0.93&rarr;0.86)</td><td class="found">강함 (엣지 기반)</td>
+  </tr>
+  <tr>
+    <td class="name">큰 템플릿 대응</td>
+    <td class="found">가능</td><td class="found">가능</td>
+    <td class="not-found">스케일 범위 제한</td><td class="not-found">스케일 범위 제한</td>
+  </tr>
+  <tr>
+    <td class="name">정답/오답 점수 격차</td>
+    <td>&mdash;</td><td>&mdash;</td>
+    <td>보통 (0.39~0.93)</td><td class="found">큼 (0.08~0.69)</td>
+  </tr>
+  <tr>
+    <td class="name">속도</td>
+    <td>보통</td><td class="found">빠름</td>
+    <td>느림 (멀티스케일)</td><td>느림 (멀티스케일)</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>8. 색상 변화 실험 (hdmi4_color1)</h2>
+
+<p>hdmi4 원본(크래프트지 톤)과 동일한 내용이지만 <b>주황색으로 색상을 변경</b>한 hdmi4_color1 템플릿을 추가하여 각 방법의 색상 변화 대응력을 검증했다.</p>
+
+<div class="img-grid" style="grid-template-columns: 1fr 1fr 1fr; max-width: 600px;">
+  <div class="img-box">
+    <img src="hdmi4.png" alt="hdmi4 원본" style="image-rendering: pixelated;">
+    <div class="caption">hdmi4 (원본)</div>
+  </div>
+  <div class="img-box">
+    <img src="hdmi4_color1.png" alt="hdmi4_color1 색상변경" style="image-rendering: pixelated;">
+    <div class="caption">hdmi4_color1 (주황)</div>
+  </div>
+</div>
+
+<table>
+  <tr>
+    <th>Template</th><th>SIFT</th><th>ORB</th><th>TM (score)</th><th>Canny (score)</th>
+  </tr>
+  <tr>
+    <td class="name">hdmi4 (원본)</td>
+    <td class="found">FOUND (105)</td><td class="found">FOUND (96)</td>
+    <td class="found">FOUND (0.9269)</td><td class="found">FOUND (0.5695)</td>
+  </tr>
+  <tr style="background:#e8f5e9;">
+    <td class="name">hdmi4_color1 (주황)</td>
+    <td class="found">FOUND (63)</td><td class="found">FOUND (77)</td>
+    <td class="found">FOUND (0.8625)</td><td class="found">FOUND (0.4166)</td>
+  </tr>
+</table>
+
+<div class="conclusion">
+  <h3>분석</h3>
+  <ul>
+    <li><b>4개 방법 모두 FOUND</b> &mdash; 색상 변경에도 검출 성공</li>
+    <li><b>TM:</b> 0.9269 &rarr; 0.8625 (7% 하락). TM_CCOEFF_NORMED가 평균 밝기를 정규화하므로 톤 변화를 어느 정도 흡수</li>
+    <li><b>Canny:</b> 0.5695 &rarr; 0.4166 (27% 하락). 엣지 추출은 색상 무관하지만, 주황 톤에서 대비가 약해져 엣지가 일부 손실됨. threshold(0.38) 근처라 <b>극단적 색상 변화 시 위험</b></li>
+    <li><b>SIFT/ORB:</b> 매칭 수 감소(105&rarr;63, 96&rarr;77)하지만 여전히 FOUND. 특징점 기반이라 색상 영향이 적음</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>9. 권장 사항</h2>
+
+<div class="conclusion">
+  <h3>실전 적용 시 권장 전략</h3>
+  <ul>
+    <li><b>1차: Canny Edge TM</b>으로 검출 &mdash; 색상/톤 변화에 강하고, 오답 점수 격차가 가장 큼</li>
+    <li><b>보완: TM</b>으로 교차 검증 &mdash; Canny에서 경계선 점수(0.35~0.45)인 경우 TM 점수로 재확인</li>
+    <li><b>템플릿 준비 원칙:</b>
+      <ul>
+        <li>로고 영역만 크롭 (배경 최소화)</li>
+        <li>실제 검출 대상과 유사한 크기 (100~300px 폭 권장)</li>
+        <li>너무 큰 원본(1000px+)은 스케일 범위 초과로 미검출됨</li>
+      </ul>
+    </li>
+    <li><b>SIFT/ORB는 "로고가 어딘가에 있는지" 대략적 위치 파악 용도로만 활용</b> (정밀 구분 불가)</li>
+  </ul>
+</div>
+
+<p style="text-align: center; color: #999; margin-top: 40px; font-size: 0.8em;">
+  Generated by detect_logos.py &mdash; OpenCV 4.13.0 / Python 3.13
+</p>
+
+</div>
+</body>
+</html>
